@@ -70,6 +70,9 @@ WSGI_APPLICATION = 'Backend.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+
+AUTH_USER_MODEL = "api.User"
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
