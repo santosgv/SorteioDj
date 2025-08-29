@@ -1,88 +1,93 @@
 from rest_framework import serializers
-from api.models import *
+from api.models import (
+    User, SiteConfig, Sorteio, SorteioNumero,
+    Comprar, Raspadinha
+)
 
-class RaffleNumberSerializer(serializers.ModelSerializer):
+
+# --------------------------
+# User Serializer
+# --------------------------
+class UserSerializer(serializers.ModelSerializer):
     class Meta:
-        model = RaffleNumber
-        fields = ["id", "number", "status"]
+        model = User
+        fields = [
+            "id", "username", "email", "cpf", "data_nascimento",
+            "telefone", "cep", "endereco", "cidade", "uf",
+            "data_cadastro"
+        ]
+        read_only_fields = ["id", "data_cadastro"]
 
-class RaffleSerializer(serializers.ModelSerializer):
-    available = serializers.SerializerMethodField()
 
+# --------------------------
+# Configuração do Site
+# --------------------------
+class SiteConfigSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Raffle
-        fields = ["id", "title", "description", "total_numbers", "price_per_number",
-                  "status", "starts_at", "ends_at", "available"]
+        model = SiteConfig
+        fields = "__all__"
 
-    def get_available(self, obj):
-        return obj.numbers.filter(status=RaffleNumber.Status.AVAILABLE).count()
 
-class PurchaseCreateSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Purchase
-        fields = ["idempotency_key", "raffle", "quantity", "chosen_numbers", "payment_provider"]
-        extra_kwargs = {
-            "idempotency_key": {"required": False},
-            "chosen_numbers": {"required": False},
-        }
-
-    def validate(self, data):
-        raffle = data["raffle"]
-        if raffle.status != Raffle.Status.SELLING:
-            raise serializers.ValidationError("Sorteio não está em venda.")
-        chosen = data.get("chosen_numbers") or []
-        qty = data["quantity"]
-        if chosen and len(chosen) != qty:
-            raise serializers.ValidationError("Quantidade ≠ quantidade de números escolhidos.")
-        return data
-
-    def create(self, validated):
-        user = self.context["request"].user
-        raffle = validated["raffle"]
-        qty = validated["quantity"]
-        chosen = validated.get("chosen_numbers") or []
-        unit = raffle.price_per_number
-        total = unit * qty
-        return Purchase.objects.create(
-            user=user,
-            raffle=raffle,
-            quantity=qty,
-            chosen_numbers=chosen,
-            unit_price=unit,
-            total_price=total,
-            payment_provider=validated.get("payment_provider") or "",
-        )
-
-class PurchaseSerializer(serializers.ModelSerializer):
-    numbers = RaffleNumberSerializer(many=True, read_only=True)
+# --------------------------
+# Sorteio + Números
+# --------------------------
+class SorteioNumeroSerializer(serializers.ModelSerializer):
+    proprietario = UserSerializer(read_only=True)
 
     class Meta:
-        model = Purchase
-        fields = ["id", "idempotency_key", "status", "payment_ref", "total_price",
-                  "unit_price", "quantity", "raffle", "numbers", "paid_at", "created_at"]
+        model = SorteioNumero
+        fields = [
+            "id", "sorteio", "numero", "status",
+            "proprietario", "reservado_até", "comprar"
+        ]
+        read_only_fields = ["id", "status", "proprietario"]
 
-class ScratchCardSerializer(serializers.ModelSerializer):
+
+class SorteioSerializer(serializers.ModelSerializer):
+    criado_por = UserSerializer(read_only=True)
+    numeros = SorteioNumeroSerializer(many=True, read_only=True)
+
     class Meta:
-        model = ScratchCard
-        fields = ["id", "status", "prize_amount", "revealed_at", "claimed_at"]
+        model = Sorteio
+        fields = [
+            "id", "titulo", "descricao", "numeros_totais",
+            "preco_por_numero", "status", "comeca_as", "termina_em",
+            "image", "regras", "criado_por", "criado_em", "numeros"
+        ]
+        read_only_fields = ["id", "criado_em", "status", "criado_por"]
 
-class AffiliateLinkSerializer(serializers.ModelSerializer):
-    current_percent = serializers.SerializerMethodField()
+
+# --------------------------
+# Compra (Comprar)
+# --------------------------
+class ComprarSerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
+    sorteio = SorteioSerializer(read_only=True)
 
     class Meta:
-        model = AffiliateLink
-        fields = ["id", "code", "active", "percentage_override", "current_percent"]
+        model = Comprar
+        fields = [
+            "id", "chave_idempotencia", "user", "sorteio",
+            "quantidade", "preco_unitario", "total_preco",
+            "status", "provedor_de_pagamento", "pagamento_ref",
+            "criado_em", "pago_em", "números_escolhidos"
+        ]
+        read_only_fields = ["id", "chave_idempotencia", "criado_em", "pago_em"]
 
-    def get_current_percent(self, obj):
-        return obj.current_percent()
 
-class CommissionSerializer(serializers.ModelSerializer):
+# --------------------------
+# Raspadinha
+# --------------------------
+class RaspadinhaSerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
+    sorteio = SorteioSerializer(read_only=True)
+    comprar = ComprarSerializer(read_only=True)
+
     class Meta:
-        model = Commission
-        fields = ["id", "purchase", "amount", "percentage", "status", "created_at"]
-
-class WithdrawalSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = WithdrawalRequest
-        fields = ["id", "amount", "status", "pix_key", "created_at", "processed_at", "admin_note"]
-        read_only_fields = ["status", "processed_at", "admin_note"]
+        model = Raspadinha
+        fields = [
+            "id", "user", "sorteio", "comprar",
+            "codigo", "status", "valor_premio",
+            "revrevelado_emealed_at", "reivindicado_em", "criado_em"
+        ]
+        read_only_fields = ["id", "criado_em", "valor_premio"]

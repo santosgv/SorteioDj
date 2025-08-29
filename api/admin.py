@@ -2,12 +2,8 @@ from django.contrib import admin
 from api.models import *
 
 admin.site.register(User)
-admin.site.register(Raffle)
+admin.site.register(Sorteio)
 admin.site.register(SiteConfig) 
-admin.site.register(RaffleNumber)
-admin.site.register(Purchase)
-admin.site.register(ScratchCard)
-admin.site.register(AffiliateLink)
-admin.site.register(Referral)
-admin.site.register(Commission)
-admin.site.register(WithdrawalRequest)
+admin.site.register(SorteioNumero)
+admin.site.register(Comprar)
+admin.site.register(Raspadinha)
