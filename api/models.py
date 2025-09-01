@@ -89,6 +89,7 @@ class Comprar(models.Model):
         verbose_name_plural = "Comprar"
 
 class SorteioNumero(models.Model):
+    
     """Número individual do sorteio (estoque)."""
     class Status(models.TextChoices):
         AVAILABLE = "available", "Disponível"
@@ -113,7 +114,7 @@ class SorteioNumero(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.sorteio_id} - #{self.numero} ({self.status})"
+        return f"{self.sorteio.titulo} - #{self.numero} ({self.status})"
 
     class Meta:
         verbose_name = "Número de rifa"
